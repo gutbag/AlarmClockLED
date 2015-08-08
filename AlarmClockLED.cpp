@@ -22,6 +22,42 @@ enum EventType // 'Event' won't compile
 	BUTTON_PRESSED
 };
 
+class LED
+{
+public:
+	LED(const int aPin)
+	: pin(aPin)
+	{
+	}
+	
+	void setup()
+	{
+		pinMode(pin, OUTPUT);
+	}
+	
+	void loop(const unsigned long msNow)
+	{
+	}
+	
+	void sleep()
+	{
+		pinMode(pin, INPUT);
+	}
+	
+	void off()
+	{
+		digitalWrite(pin, LOW);
+	}
+	
+	void on()
+	{
+		digitalWrite(pin, HIGH);
+	}
+
+private:
+	int pin;
+};
+
 class DebouncedInput
 {
 public:
@@ -154,26 +190,31 @@ EventType event = NONE;
 unsigned long ledTestOnTime = 0;
 Button button(BUTTON_PIN);
 Alarm alarm(ALARM_PIN);
+LED led(LED_PIN);
 
 void setup()
 {
 	//  pinMode(ALARM_PIN, INPUT_PULLUP);
 	//  digitalWrite(ALARM_PIN, HIGH);
-	pinMode(LED_PIN, OUTPUT);
 	
 	pinMode(DBG_P1, OUTPUT);
 	digitalWrite(DBG_P1, LOW);
 	
 	button.setup();
 	alarm.setup();
+	led.setup();
 	
 	// Flash quick sequence so we know setup has started
 	for (int k = 0; k < 10; k++)
 	{
 		if (k % 2 == 0)
-			digitalWrite(LED_PIN, HIGH);
+		{
+			led.on();
+		}
 		else
-			digitalWrite(LED_PIN, LOW);
+		{
+			led.off();
+		}
 		
 		delay(100);
 	}
@@ -184,7 +225,7 @@ void setup()
 
 void sleep()
 {
-	pinMode(LED_PIN, INPUT);
+	led.sleep();
 	
 	GIMSK |= _BV(PCIE);                     // Enable Pin Change Interrupts
 	GIMSK |= _BV(INT0);                     // Enable INT0 Interrupts
@@ -211,7 +252,7 @@ void sleep()
 	
 	sei();                                  // Enable interrupts
 	
-	pinMode(LED_PIN, OUTPUT);
+	led.setup();
 	button.reset();
 	alarm.reset();
 }
@@ -242,6 +283,7 @@ void loop()
 	
 	button.loop(msNow);
 	alarm.loop(msNow);
+	led.loop(msNow);
 	
 	if ( ! firstLoop && button.pressed())
 	{
@@ -264,7 +306,7 @@ void loop()
 		{
 			case ALARM_ON:
 				state = ALARM;
-				digitalWrite(LED_PIN, HIGH);
+				led.on();
 				digitalWrite(DBG_P1, LOW);
 				break;
 			case ALARM_OFF:
@@ -273,7 +315,7 @@ void loop()
 			case BUTTON_PRESSED:
 				state = LED_TEST;
 				ledTestOnTime = msNow;
-				digitalWrite(LED_PIN, HIGH);
+				led.on();
 				break;
 		}
 			break;
@@ -289,7 +331,7 @@ void loop()
 				//dbgToggle();
 				break;
 			case BUTTON_PRESSED: // turn LED off and wait for alarm to stop before sleeping
-				digitalWrite(LED_PIN, LOW);
+				led.off();
 				state = SLEEP_PENDING;
 				//dbgToggle();
 				break;
@@ -300,7 +342,7 @@ void loop()
 		{
 			case ALARM_ON:
 				state = ALARM;
-				digitalWrite(LED_PIN, HIGH); // redundant
+				led.on(); // redundant
 				break;
 			case ALARM_OFF:
 				break;
@@ -310,7 +352,7 @@ void loop()
 			default:
 				if (msNow - ledTestOnTime > 1000)
 				{
-					digitalWrite(LED_PIN, LOW);
+					led.off();
 					state = SLEEPING;
 					goToSleep = true;
 				}
@@ -323,12 +365,12 @@ void loop()
 			case ALARM_ON:
 				break;
 			case ALARM_OFF:
-				digitalWrite(LED_PIN, LOW);
+				led.off();
 				state = SLEEPING;
 				goToSleep = true;
 				break;
 			case BUTTON_PRESSED:
-				digitalWrite(LED_PIN, LOW);
+				led.off();
 				state = SLEEPING;
 				goToSleep = true;
 				break;
