@@ -6,11 +6,16 @@ static const int BUTTON_PIN = 3;
 static const int LED_PIN = 4;
 static const int DBG_P1 = 1;
 
+static const unsigned long CONFIG_CHANGE_PERIOD_MS = 3000;
+static const unsigned long ALARM_ON_TIME_MS = 10000;
+
 enum StateType
 {
 	SLEEPING,
 	ALARM,
 	LED_TEST,
+	CHANGE_CONFIG,
+	CONFIRM_CONFIG,
 	SLEEP_PENDING
 };
 
@@ -19,7 +24,8 @@ enum EventType // 'Event' won't compile
 	NONE,
 	ALARM_ON,
 	ALARM_OFF,
-	BUTTON_PRESSED
+	BUTTON_PRESSED,
+	FLASH_FINISHED
 };
 
 class LED
@@ -53,9 +59,80 @@ public:
 	{
 		digitalWrite(pin, HIGH);
 	}
-
+	
 private:
 	int pin;
+};
+
+class Flasher
+{
+public:
+	struct Phase
+	{
+		bool onState;
+		unsigned long msDuration;
+	};
+	
+	Flasher(LED& aLed) : led(aLed), lastChange(~0), phase(NULL), hasFinished(false)
+	{
+	}
+	
+	void setup()
+	{
+	}
+	
+	void loop(const unsigned long msNow)
+	{
+		if (phase != NULL)
+		{
+			if (msNow - lastChange > phase->msDuration)
+			{
+				phase++;
+				
+				if (phase->onState)
+					led.on();
+				else
+					led.off();
+				
+				lastChange = msNow;
+				
+				if (phase->msDuration == 0) // finished
+				{
+					phase = NULL;
+					hasFinished = true;
+				}
+			}
+			
+		}
+	}
+	
+	void flash(const unsigned long msNow, const Phase* somePhases)
+	{
+		phase = somePhases;
+		
+		if (phase != NULL)
+		{
+			if (phase->onState)
+				led.on();
+			else
+				led.off();
+			
+			lastChange = msNow;
+		}
+	}
+	
+	bool finished()
+	{
+		bool returnVal = hasFinished;
+		hasFinished = false;
+		return returnVal;
+	}
+	
+private:
+	LED led;
+	unsigned long lastChange;
+	const Phase* phase;
+	bool hasFinished;
 };
 
 class DebouncedInput
@@ -187,22 +264,37 @@ private:
 
 StateType state = SLEEPING;
 EventType event = NONE;
-unsigned long ledTestOnTime = 0;
+unsigned long changeConfigStartTime = 0;
+unsigned long alarmStartTime = 0;
 Button button(BUTTON_PIN);
 Alarm alarm(ALARM_PIN);
 LED led(LED_PIN);
+Flasher flasher(led);
+bool ignoreAlarm = false;
+
+static const Flasher::Phase oneFlash[] = {
+	{true, 400},
+	{false, 0}
+};
+
+static const Flasher::Phase twoFlashes[] = {
+	{true, 400},
+	{false, 200},
+	{true, 400},
+	{false, 0},
+};
 
 void setup()
 {
-	//  pinMode(ALARM_PIN, INPUT_PULLUP);
-	//  digitalWrite(ALARM_PIN, HIGH);
-	
 	pinMode(DBG_P1, OUTPUT);
 	digitalWrite(DBG_P1, LOW);
 	
 	button.setup();
 	alarm.setup();
 	led.setup();
+	flasher.setup();
+	
+	ignoreAlarm = false;
 	
 	// Flash quick sequence so we know setup has started
 	for (int k = 0; k < 10; k++)
@@ -284,6 +376,7 @@ void loop()
 	button.loop(msNow);
 	alarm.loop(msNow);
 	led.loop(msNow);
+	flasher.loop(msNow);
 	
 	if ( ! firstLoop && button.pressed())
 	{
@@ -297,6 +390,11 @@ void loop()
 		//dbgToggle();
 	}
 	
+	if (flasher.finished())
+	{
+		event = FLASH_FINISHED;
+	}
+	
 	firstLoop = false;
 	
 	switch (state)
@@ -305,17 +403,29 @@ void loop()
 			switch (event)
 		{
 			case ALARM_ON:
-				state = ALARM;
-				led.on();
-				digitalWrite(DBG_P1, LOW);
+				if ( ! ignoreAlarm)
+				{
+					state = ALARM;
+					alarmStartTime = msNow;
+					led.on();
+				}
+				else
+				{
+					state = SLEEP_PENDING;
+				}
+				
+				ignoreAlarm = !ignoreAlarm;
+				
+				//digitalWrite(DBG_P1, LOW);
 				break;
 			case ALARM_OFF:
 				// nothing
 				break;
 			case BUTTON_PRESSED:
 				state = LED_TEST;
-				ledTestOnTime = msNow;
-				led.on();
+				//ledTestOnTime = msNow;
+				//led.on();
+				flasher.flash(msNow, ignoreAlarm ? twoFlashes : oneFlash);
 				break;
 		}
 			break;
@@ -327,13 +437,24 @@ void loop()
 				break;
 			case ALARM_OFF:
 				// nothing - wait for button
-				state = SLEEP_PENDING;
-				//dbgToggle();
+				//state = SLEEP_PENDING;
+//				led.off();
+//				state = SLEEPING;
+//				goToSleep = true;
 				break;
 			case BUTTON_PRESSED: // turn LED off and wait for alarm to stop before sleeping
 				led.off();
 				state = SLEEP_PENDING;
 				//dbgToggle();
+				break;
+			default:
+				if (msNow - alarmStartTime >= ALARM_ON_TIME_MS)
+				{
+					led.off();
+					state = SLEEP_PENDING;
+//					state = SLEEPING;
+//					goToSleep = true;
+				}
 				break;
 		}
 			break;
@@ -341,21 +462,56 @@ void loop()
 			switch (event)
 		{
 			case ALARM_ON:
-				state = ALARM;
-				led.on(); // redundant
+				//state = ALARM;
+				//led.on(); // redundant
 				break;
 			case ALARM_OFF:
 				break;
 			case BUTTON_PRESSED:
 				// ignore
 				break;
+			case FLASH_FINISHED:
+				// TODO: start the 10s long flash sequence here???
+				//flasher.flash(msNow, configFlash);
+				changeConfigStartTime = msNow;
+				state = CHANGE_CONFIG;
+				break;
 			default:
-				if (msNow - ledTestOnTime > 1000)
+				//				if (msNow - ledTestOnTime > 1000)
+				//				{
+				//					led.off();
+				//					state = SLEEPING;
+				//					goToSleep = true;
+				//				}
+				break;
+		}
+			break;
+			
+		case CHANGE_CONFIG:
+			switch (event)
+		{
+			case BUTTON_PRESSED:
+				ignoreAlarm = !ignoreAlarm;
+				break;
+				//			case FLASH_FINISHED:
+				//				state = SLEEPING;
+				//				goToSleep = true;
+				//				break;
+			default:
+				if (msNow - changeConfigStartTime >= CONFIG_CHANGE_PERIOD_MS)
 				{
-					led.off();
-					state = SLEEPING;
-					goToSleep = true;
+					flasher.flash(msNow, ignoreAlarm ? twoFlashes : oneFlash);
+					state = CONFIRM_CONFIG;
 				}
+				break;
+		}
+			break;
+		case CONFIRM_CONFIG:
+			switch (event)
+		{
+			case FLASH_FINISHED:
+				state = SLEEPING;
+				goToSleep = true;
 				break;
 		}
 			break;
