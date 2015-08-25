@@ -287,7 +287,6 @@ static const Flasher::Phase twoFlashes[] = {
 void setup()
 {
 	pinMode(DBG_P1, OUTPUT);
-	digitalWrite(DBG_P1, LOW);
 	
 	button.setup();
 	alarm.setup();
@@ -381,13 +380,11 @@ void loop()
 	if ( ! firstLoop && button.pressed())
 	{
 		event = BUTTON_PRESSED;
-		//dbgToggle();
 	}
 	
 	if (alarm.off())
 	{
 		event = ALARM_OFF;
-		//dbgToggle();
 	}
 	
 	if (flasher.finished())
@@ -416,15 +413,12 @@ void loop()
 				
 				ignoreAlarm = !ignoreAlarm;
 				
-				//digitalWrite(DBG_P1, LOW);
 				break;
 			case ALARM_OFF:
 				// nothing
 				break;
 			case BUTTON_PRESSED:
 				state = LED_TEST;
-				//ledTestOnTime = msNow;
-				//led.on();
 				flasher.flash(msNow, ignoreAlarm ? twoFlashes : oneFlash);
 				break;
 		}
@@ -437,23 +431,16 @@ void loop()
 				break;
 			case ALARM_OFF:
 				// nothing - wait for button
-				//state = SLEEP_PENDING;
-//				led.off();
-//				state = SLEEPING;
-//				goToSleep = true;
 				break;
 			case BUTTON_PRESSED: // turn LED off and wait for alarm to stop before sleeping
 				led.off();
 				state = SLEEP_PENDING;
-				//dbgToggle();
 				break;
 			default:
 				if (msNow - alarmStartTime >= ALARM_ON_TIME_MS)
 				{
 					led.off();
 					state = SLEEP_PENDING;
-//					state = SLEEPING;
-//					goToSleep = true;
 				}
 				break;
 		}
@@ -462,8 +449,6 @@ void loop()
 			switch (event)
 		{
 			case ALARM_ON:
-				//state = ALARM;
-				//led.on(); // redundant
 				break;
 			case ALARM_OFF:
 				break;
@@ -471,18 +456,8 @@ void loop()
 				// ignore
 				break;
 			case FLASH_FINISHED:
-				// TODO: start the 10s long flash sequence here???
-				//flasher.flash(msNow, configFlash);
 				changeConfigStartTime = msNow;
 				state = CHANGE_CONFIG;
-				break;
-			default:
-				//				if (msNow - ledTestOnTime > 1000)
-				//				{
-				//					led.off();
-				//					state = SLEEPING;
-				//					goToSleep = true;
-				//				}
 				break;
 		}
 			break;
@@ -493,10 +468,6 @@ void loop()
 			case BUTTON_PRESSED:
 				ignoreAlarm = !ignoreAlarm;
 				break;
-				//			case FLASH_FINISHED:
-				//				state = SLEEPING;
-				//				goToSleep = true;
-				//				break;
 			default:
 				if (msNow - changeConfigStartTime >= CONFIG_CHANGE_PERIOD_MS)
 				{
@@ -534,18 +505,13 @@ void loop()
 			break;
 	}
 	
-	//if (stateDbg)
-	//  dbg();
-	
 	event = NONE;
 	
 	if (goToSleep)
 	{
-		//dbgToggle();
 		sleep();
 		button.reset();
 		alarm.reset();
-		//dbgToggle();
 	}
 }
 
