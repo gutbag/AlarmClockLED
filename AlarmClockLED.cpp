@@ -9,6 +9,12 @@ static const int DBG_P1 = 1;
 static const unsigned long CONFIG_CHANGE_PERIOD_MS = 3000;
 static const unsigned long ALARM_ON_TIME_MS = 10000;
 
+// The amount of 'no alarm' required for the ALARM_OFF event to be triggered.
+// Originally 2s, but the alarm signal stutters at the end of the period.
+static const unsigned long ALARM_STABLE_OFF_TIME_MS = 20000;
+
+static const unsigned long BUTTON_DEBOUNCE_TIME_MS = 50;
+
 enum StateType
 {
 	SLEEPING,
@@ -188,7 +194,7 @@ private:
 class Button : public DebouncedInput
 {
 public:
-	Button(int aPin) : DebouncedInput(aPin, 50), pressedState(false)
+	Button(int aPin) : DebouncedInput(aPin, BUTTON_DEBOUNCE_TIME_MS), pressedState(false)
 	{
 	}
 	
@@ -226,7 +232,7 @@ private:
 class Alarm : public DebouncedInput
 {
 public:
-	Alarm(int aPin) : DebouncedInput(aPin, 2000), offState(false)
+	Alarm(int aPin) : DebouncedInput(aPin, ALARM_STABLE_OFF_TIME_MS), offState(false)
 	{
 	}
 	
