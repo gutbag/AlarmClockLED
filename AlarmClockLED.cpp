@@ -6,14 +6,19 @@ static const int BUTTON_PIN = 3;
 static const int LED_PIN = 4;
 static const int DBG_P1 = 1;
 
-static const unsigned long CONFIG_CHANGE_PERIOD_MS = 3000;
-static const unsigned long ALARM_ON_TIME_MS = 10000;
+// allow 3s to toggle the 'ignore alarm' state
+static const unsigned long CONFIG_CHANGE_PERIOD_MS = 3000L;
+
+// the LED stays on for 10 mins
+static const unsigned long ALARM_LED_ON_TIME_MS = 10L * 60L * 1000L;
 
 // The amount of 'no alarm' required for the ALARM_OFF event to be triggered.
 // Originally 2s, but the alarm signal stutters at the end of the period.
-static const unsigned long ALARM_STABLE_OFF_TIME_MS = 20000;
+//static const unsigned long ALARM_STABLE_OFF_TIME_MS = 20000;
+static const unsigned long ALARM_STABLE_OFF_TIME_MS = 20000L;
 
-static const unsigned long BUTTON_DEBOUNCE_TIME_MS = 50;
+// the tilt switch is quite bouncy
+static const unsigned long BUTTON_DEBOUNCE_TIME_MS = 200L;
 
 enum StateType
 {
@@ -328,7 +333,7 @@ void sleep()
 	GIMSK |= _BV(INT0);                     // Enable INT0 Interrupts
 	PCMSK |= _BV(PCINT3);                   // Use PB3 as interrupt pin
 	//PCMSK |= _BV(PCINT0);                   // Use PB0 as interrupt pin
-	//ADCSRA &= ~_BV(ADEN);                   // ADC off
+	ADCSRA &= ~_BV(ADEN);                   // ADC off
 	MCUCR &= ~_BV(ISC00);
 	MCUCR &= ~_BV(ISC01);
 	
@@ -345,7 +350,7 @@ void sleep()
 	GIMSK &= ~_BV(INT0);                     // Disable INT0 Interrupts
 	//PCMSK &= ~_BV(PCINT0);                  // Turn off PB0 as interrupt pin
 	sleep_disable();                        // Clear SE bit
-	//ADCSRA |= _BV(ADEN);                    // ADC on
+	//ADCSRA |= _BV(ADEN);                    // don't want ADC on
 	
 	sei();                                  // Enable interrupts
 	
@@ -356,7 +361,8 @@ void sleep()
 
 ISR(PCINT0_vect)
 {
-	event = BUTTON_PRESSED;
+	// the button was pressed but the event will be set in loop() once the
+	// debounce logic has done its job
 }
 
 ISR(INT0_vect)
@@ -364,7 +370,6 @@ ISR(INT0_vect)
 	event = ALARM_ON;
 }
 
-boolean firstLoop = true;
 boolean dbgPinHigh = false;
 
 void dbgToggle()
@@ -383,7 +388,7 @@ void loop()
 	led.loop(msNow);
 	flasher.loop(msNow);
 	
-	if ( ! firstLoop && button.pressed())
+	if (button.pressed())
 	{
 		event = BUTTON_PRESSED;
 	}
@@ -397,8 +402,6 @@ void loop()
 	{
 		event = FLASH_FINISHED;
 	}
-	
-	firstLoop = false;
 	
 	switch (state)
 	{
@@ -443,7 +446,7 @@ void loop()
 				state = SLEEP_PENDING;
 				break;
 			default:
-				if (msNow - alarmStartTime >= ALARM_ON_TIME_MS)
+				if (msNow - alarmStartTime >= ALARM_LED_ON_TIME_MS)
 				{
 					led.off();
 					state = SLEEP_PENDING;
