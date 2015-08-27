@@ -4,7 +4,6 @@
 static const int ALARM_PIN = 2;
 static const int BUTTON_PIN = 3;
 static const int LED_PIN = 4;
-static const int DBG_P1 = 1;
 
 // allow 3s to toggle the 'ignore alarm' state
 static const unsigned long CONFIG_CHANGE_PERIOD_MS = 3000L;
@@ -297,8 +296,6 @@ static const Flasher::Phase twoFlashes[] = {
 
 void setup()
 {
-	pinMode(DBG_P1, OUTPUT);
-	
 	button.setup();
 	alarm.setup();
 	led.setup();
@@ -368,14 +365,6 @@ ISR(PCINT0_vect)
 ISR(INT0_vect)
 {
 	event = ALARM_ON;
-}
-
-boolean dbgPinHigh = false;
-
-void dbgToggle()
-{
-	dbgPinHigh = dbgPinHigh ? false : true;
-	digitalWrite(DBG_P1, dbgPinHigh ? HIGH : LOW);
 }
 
 void loop()
