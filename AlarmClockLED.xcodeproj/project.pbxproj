@@ -6,11 +6,28 @@
 	objectVersion = 46;
 	objects = {
 
+/* Begin PBXFileReference section */
+		F61B3D121B45E17E0050F219 /* AlarmClockLED.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = AlarmClockLED.cpp; sourceTree = "<group>"; };
+		F61B3D141B45E4980050F219 /* AlarmClockLED.sch */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = AlarmClockLED.sch; path = Hardware/AlarmClockLED.sch; sourceTree = "<group>"; };
+		F61B3D151B45E4C00050F219 /* README.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.txt; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
 /* Begin PBXGroup section */
 		F61B3D0A1B45E0D60050F219 = {
 			isa = PBXGroup;
 			children = (
+				F61B3D121B45E17E0050F219 /* AlarmClockLED.cpp */,
+				F61B3D151B45E4C00050F219 /* README.txt */,
+				F61B3D131B45E47F0050F219 /* Hardware */,
 			);
+			sourceTree = "<group>";
+		};
+		F61B3D131B45E47F0050F219 /* Hardware */ = {
+			isa = PBXGroup;
+			children = (
+				F61B3D141B45E4980050F219 /* AlarmClockLED.sch */,
+			);
+			name = Hardware;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
