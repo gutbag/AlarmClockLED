@@ -13,7 +13,6 @@ static const unsigned long ALARM_LED_ON_TIME_MS = 10L * 60L * 1000L;
 
 // The amount of 'no alarm' required for the ALARM_OFF event to be triggered.
 // Originally 2s, but the alarm signal stutters at the end of the period.
-//static const unsigned long ALARM_STABLE_OFF_TIME_MS = 20000;
 static const unsigned long ALARM_STABLE_OFF_TIME_MS = 20000L;
 
 // the tilt switch is quite bouncy
